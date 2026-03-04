@@ -8,6 +8,21 @@ FeastClient
    :members:
    :show-inheritance:
 
+Decorators and Context Managers
+-------------------------------
+
+.. autoclass:: kubeflow.feast.FeatureStore
+   :members:
+   :show-inheritance:
+
+.. autoclass:: kubeflow.feast.FeastMaterializer
+   :members:
+   :show-inheritance:
+
+.. autoclass:: kubeflow.feast.FeastStreamProcessor
+   :members:
+   :show-inheritance:
+
 Types
 -----
 

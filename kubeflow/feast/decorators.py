@@ -41,14 +41,24 @@ Usage examples::
 
 
     # ── Composable with other decorators ──
-    @Trainer("fine-tune", runtime="pytorch-distributed", hw_profile="H100")
-    @FeatureStore("prod-feast")
-    async def train(fs):
-        training_df = fs.get_historical_features(...).to_df()
-        model = torch.nn.Linear(10, 1)
-        ...
+    import functools
 
-    await train()
+    def log_call(func):
+        @functools.wraps(func)
+        def wrapper(*a, **kw):
+            print(f"Calling {func.__name__}")
+            return func(*a, **kw)
+        return wrapper
+
+    @log_call
+    @FeatureStore("prod-feast")
+    def get_features(fs):
+        return fs.get_online_features(
+            features=["driver_stats:conv_rate"],
+            entity_rows=[{"driver_id": 1001}],
+        ).to_dict()
+
+    get_features()
 
 
     # ── Materialization as a managed workload ──
@@ -191,10 +201,10 @@ class FeatureStore:
 
         Compose with other decorators::
 
-            @Trainer("fine-tune", runtime="pytorch-distributed")
+            @log_call
             @FeatureStore("prod-feast")
-            async def train(fs):
-                training_df = fs.get_historical_features(...).to_df()
+            def get_features(fs):
+                return fs.get_online_features(...)
                 ...
     """
 

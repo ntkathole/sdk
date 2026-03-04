@@ -48,6 +48,9 @@ spark = [
 hub = [
   "model-registry>=0.3.6",
 ]
+feast = [
+  "feast>=0.60.0",
+]
 
 [dependency-groups]
 docs = [
@@ -59,7 +62,7 @@ docs = [
   "sphinx-design>=0.6",
 ]
 dev = [
-  "kubeflow[hub,spark]",
+  "kubeflow[hub,spark,feast]",
   "pytest>=7.0",
   "pytest-mock>=3.10",
   "coverage>=7.0",

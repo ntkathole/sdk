@@ -7,13 +7,13 @@ Overview
 --------
 
 The Kubeflow Feast integration provides a unified client for managing
-`Feast <https://feast.dev/>`_ feature store deployments on Kubernetes/OpenShift
+`Feast <https://feast.dev/>`_ feature store deployments on Kubernetes
 and interacting with the Feast feature store API.
 
 The ``FeastClient`` offers two capabilities:
 
 - **Infrastructure management** — Create, monitor, and delete FeatureStore
-  deployments managed by the `Feast operator <https://github.com/feast-dev/feast/tree/master/infra/feast-operator>`_
+  deployments managed by the `Feast operator <https://docs.feast.dev/how-to-guides/feast-on-kubernetes#feast-operator>`_
   on Kubernetes.
 - **Feature store operations** — Apply feature definitions, materialize features,
   and retrieve online/offline features through an auto-configured Feast SDK client.
@@ -33,7 +33,7 @@ This installs the ``feast`` Python package alongside the Kubeflow SDK.
 
    The Feast operator must be installed on your Kubernetes cluster to manage
    FeatureStore deployments. See the
-   `Feast operator documentation <https://docs.feast.dev/reference/feast-operator>`_
+   `Feast operator documentation <https://docs.feast.dev/how-to-guides/feast-on-kubernetes#feast-operator>`_
    for installation instructions.
 
 Quick Example
@@ -249,11 +249,163 @@ Feature Store Operations
    })
    client.push("prod-feast", "driver_push_source", df)
 
+Programming Model: Decorators and Context Managers
+---------------------------------------------------
+
+For data scientists and ML engineers, the Feast integration provides a
+higher-level programming model based on **decorators** and **context managers**. These hide infrastructure details and
+let you focus on business logic.
+
+``@FeatureStore`` Decorator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``@FeatureStore`` decorator auto-configures a ``feast.FeatureStore`` and
+injects it as the first argument of your function. Works with both sync and
+async functions, and composes with other SDK decorators.
+
+.. code-block:: python
+
+   from kubeflow.feast import FeatureStore
+
+   @FeatureStore("prod-feast")
+   async def train(fs):
+       # fs is an auto-configured feast.FeatureStore
+       training_df = fs.get_historical_features(
+           entity_df=entity_df,
+           features=["driver_stats:conv_rate", "driver_stats:acc_rate"],
+       ).to_df()
+
+       model = torch.nn.Linear(10, 1)
+       # ... training loop using training_df ...
+
+   await train()
+
+You can also point to a local/remote feast connection instead of an operator deployment:
+
+.. code-block:: python
+
+   @FeatureStore(repo_path="feature_repo")
+   def get_features(fs):
+       return fs.get_online_features(
+           features=["driver_stats:conv_rate"],
+           entity_rows=[{"driver_id": 1001}],
+       ).to_dict()
+
+**Composing with other decorators:**
+
+The ``@FeatureStore`` decorator can be stacked with any standard Python decorator.
+The innermost ``@FeatureStore`` injects the configured ``feast.FeatureStore`` as the
+first argument; outer decorators can add their own behaviour (logging, retries, etc.):
+
+.. code-block:: python
+
+   import functools
+   from kubeflow.feast import FeatureStore
+
+   def log_call(func):
+       @functools.wraps(func)
+       def wrapper(*args, **kwargs):
+           print(f"Calling {func.__name__}")
+           return func(*args, **kwargs)
+       return wrapper
+
+   @log_call
+   @FeatureStore("prod-feast")
+   def get_features(fs):
+       return fs.get_online_features(
+           features=["driver_stats:conv_rate"],
+           entity_rows=[{"driver_id": 1001}],
+       ).to_dict()
+
+   get_features()
+
+``FeatureStore`` Context Manager
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use the context manager pattern when you need scoped access to a feature
+store within a block:
+
+.. code-block:: python
+
+   from kubeflow.feast import FeatureStore
+
+   # Async context manager
+   async with FeatureStore("prod-feast") as fs:
+       features = fs.get_online_features(
+           features=["driver_stats:conv_rate"],
+           entity_rows=[{"driver_id": 1001}],
+       )
+       print(features.to_dict())
+
+   # Sync context manager
+   with FeatureStore("prod-feast") as fs:
+       features = fs.get_online_features(...)
+
+``@FeastMaterializer`` Decorator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Wraps materialization as a managed workload. When a ``schedule`` is provided,
+it configures a Kubernetes CronJob on the operator-managed FeatureStore.
+
+.. code-block:: python
+
+   from kubeflow.feast import FeastMaterializer
+   from datetime import datetime
+
+   @FeastMaterializer(
+       "daily-materialize",
+       feature_store="prod-feast",
+       schedule="0 */6 * * *",
+   )
+   async def materialize(fs):
+       fs.materialize_incremental(
+           end_date=datetime.utcnow(),
+           feature_views=["driver_hourly_stats"],
+       )
+
+   await materialize()
+
+One-shot backfill without scheduling:
+
+.. code-block:: python
+
+   @FeastMaterializer("backfill", feature_store="prod-feast")
+   async def backfill(fs):
+       fs.materialize(
+           start_date=datetime(2025, 1, 1),
+           end_date=datetime.utcnow(),
+       )
+
+   await backfill()
+
+``@FeastStreamProcessor`` Decorator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For real-time feature processing from Kafka/Kinesis sources:
+
+.. code-block:: python
+
+   from kubeflow.feast import FeastStreamProcessor
+   import pandas as pd
+   from datetime import datetime
+
+   @FeastStreamProcessor("driver-events", feature_store="prod-feast")
+   async def process_stream(fs):
+       # Push real-time events to the online store
+       df = pd.DataFrame({
+           "driver_id": [1001],
+           "conv_rate": [0.92],
+           "event_timestamp": [datetime.utcnow()],
+       })
+       fs.push("driver_push_source", df)
+
+   await process_stream()
+
 Advanced: Direct Feast FeatureStore Access
 ------------------------------------------
 
-For operations not covered by the convenience methods, obtain an auto-configured
-``feast.FeatureStore`` client:
+For operations not covered by the convenience methods or decorators,
+obtain an auto-configured ``feast.FeatureStore`` client:
 
 .. code-block:: python
 

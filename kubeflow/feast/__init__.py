@@ -16,6 +16,7 @@
 
 from kubeflow.common.types import KubernetesBackendConfig
 from kubeflow.feast.api.feast_client import FeastClient
+from kubeflow.feast.decorators import FeastMaterializer, FeastStreamProcessor, FeatureStore
 from kubeflow.feast.types.options import (
     Annotations,
     CronJobSchedule,
@@ -36,6 +37,10 @@ from kubeflow.feast.types.types import (
 __all__ = [
     # Core API
     "FeastClient",
+    # Decorators and context managers (data-scientist programming model)
+    "FeatureStore",
+    "FeastMaterializer",
+    "FeastStreamProcessor",
     # Types
     "FeastProjectSource",
     "FeastStoreInfo",

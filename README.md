@@ -172,7 +172,7 @@ ModelRegistryClient("https://example.org")            # Default port (443 for ht
 pip install 'kubeflow[feast]'
 ```
 
-The Feast integration requires the [Feast operator](https://docs.feast.dev/reference/feast-operator) installed on your cluster.
+The Feast integration requires the [Feast operator](https://docs.feast.dev/how-to-guides/feast-on-kubernetes#feast-operator) installed on your cluster.
 
 ```python
 from kubeflow.feast import FeastClient, FeastProjectSource, OnlineStoreConfig
@@ -212,6 +212,36 @@ training_df = client.get_historical_features(
     entity_df=entity_df,
     features=["driver_stats:conv_rate"],
 ).to_df()
+```
+
+**Decorator programming model** — for data scientists who want to focus on business logic:
+```python
+from kubeflow.feast import FeatureStore, FeastMaterializer
+
+# @FeatureStore injects an auto-configured feast client
+@FeatureStore("prod-feast")
+async def train(fs):
+    training_df = fs.get_historical_features(
+        entity_df=entity_df,
+        features=["driver_stats:conv_rate"],
+    ).to_df()
+    # ... training loop ...
+
+await train()
+
+# Context manager pattern
+async with FeatureStore("prod-feast") as fs:
+    features = fs.get_online_features(
+        features=["driver_stats:conv_rate"],
+        entity_rows=[{"driver_id": 1001}],
+    )
+
+# Scheduled materialization
+@FeastMaterializer("daily-mat", feature_store="prod-feast", schedule="0 */6 * * *")
+async def materialize(fs):
+    fs.materialize_incremental(end_date=datetime.utcnow())
+
+await materialize()
 ```
 
 Infrastructure management:
