@@ -29,6 +29,24 @@ For Podman container backend:
 
    pip install kubeflow[podman]
 
+For Feast feature store:
+
+.. code-block:: bash
+
+   pip install 'kubeflow[feast]'
+
+For Model Registry:
+
+.. code-block:: bash
+
+   pip install 'kubeflow[hub]'
+
+For Spark:
+
+.. code-block:: bash
+
+   pip install 'kubeflow[spark]'
+
 Install from Source
 -------------------
 

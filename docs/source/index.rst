@@ -90,8 +90,8 @@ Supported Projects
    * - Spark Operator
      - 🚧 Planned
      - Data processing and feature engineering
-   * - Feast
-     - 🚧 Planned
+   * - :doc:`Feast <feast/index>`
+     - ✅ Available
      - Feature store for machine learning
 
 ----
@@ -165,6 +165,14 @@ Getting Involved
 
    hub/index
    hub/api
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Feast Feature Store
+
+   feast/index
+   feast/api
 
 .. toctree::
    :maxdepth: 2

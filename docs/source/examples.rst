@@ -87,3 +87,19 @@ TorchTune Examples
      - Llama 3.2-1B
      - Alpaca
      - `Open Notebook <https://github.com/kubeflow/trainer/blob/master/examples/torchtune/llama3_2/alpaca-trainjob-yaml.ipynb>`_
+
+Feast Feature Store Examples
+----------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Example
+     - Description
+   * - `Quickstart <https://github.com/kubeflow/sdk/blob/main/examples/feast/feast_quickstart.py>`_
+     - Deploy a feature store, retrieve online features
+   * - `Deploy & Serve <https://github.com/kubeflow/sdk/blob/main/examples/feast/feast_deploy_and_serve.py>`_
+     - Production deployment with Redis, CronJob, and replicas
+   * - `Historical Features <https://github.com/kubeflow/sdk/blob/main/examples/feast/feast_historical_features.py>`_
+     - Retrieve historical features for model training

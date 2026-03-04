@@ -165,6 +165,65 @@ ModelRegistryClient("https://example.org:456")        # Port parsed from base_ur
 ModelRegistryClient("https://example.org")            # Default port (443 for https, 8080 for http)
 ```
 
+### Manage features with Feast
+
+**Install Feast support:**
+```bash
+pip install 'kubeflow[feast]'
+```
+
+The Feast integration requires the [Feast operator](https://docs.feast.dev/reference/feast-operator) installed on your cluster.
+
+```python
+from kubeflow.feast import FeastClient, FeastProjectSource, OnlineStoreConfig
+from kubeflow.feast.types.options import Name, CronJobSchedule
+
+client = FeastClient()
+
+# Deploy a feature store via the Feast operator
+info = client.create_store(
+    feast_project="my_project",
+    project_source=FeastProjectSource(
+        git_url="https://github.com/org/feature-repo.git",
+        git_ref="main",
+    ),
+    online_store=OnlineStoreConfig(persistence_type="redis"),
+    options=[Name("prod-feast"), CronJobSchedule("0 * * * *")],
+)
+
+# Retrieve online features
+response = client.get_online_features(
+    "prod-feast",
+    features=["driver_stats:conv_rate", "driver_stats:acc_rate"],
+    entity_rows=[{"driver_id": 1001}, {"driver_id": 1002}],
+)
+print(response.to_dict())
+
+# Retrieve historical features for training
+import pandas as pd
+from datetime import datetime
+
+entity_df = pd.DataFrame({
+    "driver_id": [1001, 1002],
+    "event_timestamp": [datetime(2025, 4, 12, 10, 59), datetime(2025, 4, 12, 8, 12)],
+})
+training_df = client.get_historical_features(
+    "prod-feast",
+    entity_df=entity_df,
+    features=["driver_stats:conv_rate"],
+).to_df()
+```
+
+Infrastructure management:
+```python
+# List all FeatureStore deployments
+for store in client.list_stores():
+    print(f"{store.name}: {store.state}")
+
+# Delete a deployment
+client.delete_store("prod-feast")
+```
+
 ## Local Development
 
 Kubeflow Trainer client supports local development without needing a Kubernetes cluster.
@@ -197,7 +256,7 @@ job_id = client.train(trainer=CustomTrainer(func=train_fn))
 | **Kubeflow Model Registry** | ✅ **Available** | v0.3.0+         | Manage model artifacts, versions and ML artifacts metadata            |
 | **Kubeflow Pipelines**      | 🚧 Planned       | TBD             | Build, run, and track AI workflows                                    |
 | **Kubeflow Spark Operator** | 🚧 Planned       | TBD             | Manage Spark applications for data processing and feature engineering |
-| **Feast**                   | 🚧 Planned       | TBD             | Feature store for machine learning                                    |
+| **Feast**                   | ✅ **Available** | v0.41.0+        | Feature store for machine learning                                    |
 
 ## Community
 
